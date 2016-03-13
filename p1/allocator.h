@@ -7,7 +7,6 @@
 using std::list;
 using std::string;
 using std::runtime_error;
-using std::memcpy;
 using std::map;
 
 enum class AllocErrorType {
@@ -71,15 +70,15 @@ private:
     void erasePointer(Pointer&);
 
 public:
-    Allocator(void *base, size_t size);
+    Allocator(void*, size_t);
     
     Block findBlock(size_t);
     void* findBegin(size_t);
     size_t findSize(size_t);
 
-    Pointer alloc(size_t N);
-    void realloc(Pointer &p, size_t N);
-    void free(Pointer &p);
+    Pointer alloc(size_t);
+    void realloc(Pointer&, size_t);
+    void free(Pointer&);
     void defrag();
 
     string dump();
