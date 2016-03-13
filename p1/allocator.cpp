@@ -2,10 +2,12 @@
 #include <algorithm>
 #include <utility>
 #include <iostream>
+#include <cstring>
 
 using std::swap;
 using std::min;
 using std::make_pair;
+using std::memcpy;
 
 Block::Block(char *b, size_t s) : begin(b), size(s) {}
 

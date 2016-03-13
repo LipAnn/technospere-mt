@@ -1,7 +1,6 @@
 #include <stdexcept>
 #include <string>
 #include <list>
-#include <cstring>
 #include <map>
 
 using std::list;
