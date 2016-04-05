@@ -40,6 +40,8 @@ struct ClientBuffer {
     size_t recv_size;
     bool server_available;
     bool client_available;
+    bool server_closed;
+    bool client_closed;
     ServerAddress server;
     
     ClientBuffer();
@@ -76,6 +78,3 @@ public:
     ProxyServer() = default;
     void run();
 };  
-
-
-

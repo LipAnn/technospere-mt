@@ -1,3 +1,11 @@
+
+
+/*****************
+    OS LINUX 
+*****************/
+
+
+
 #include <iostream>
 #include <boost/asio.hpp>
 #include <vector>
@@ -60,13 +68,15 @@ ConfigProxy::ConfigProxy(const char *s) {
 }
 
 ClientBuffer::ClientBuffer() {
-    temp_size = 1024;
+    temp_size = 10;
     temp_send_buf.resize(temp_size);
     temp_recv_buf.resize(temp_size);
     send_size = 0;
     recv_size = 0;
     server_available = true;
     client_available = true;
+    server_closed = false;
+    client_closed = false;
 }
 
 void ClientBuffer::flushTempSendBuf() {
@@ -173,8 +183,15 @@ void ProxyServer::recvClientMessageHandler_(socket_ptr client_sock, socket_ptr s
     if (err == error::eof) { //kostil
         cerr << "EOF CLIENT!!!\n";
         clients_[client_sock].client_available = false;
+        /*try {
+            size_t b = boost::asio::write(*client_sock, buffer("ping"));
+            cerr << "PR: " << b << '\n';
+        } catch (...) {
+            clients_[client_sock].client_closed = true;
+        }*/
         sendClientMessage_(client_sock, server_sock);
     } else {
+		sendClientMessage_(client_sock, server_sock);
         recvClientMessage_(client_sock, server_sock);
     }
 }
@@ -193,8 +210,14 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
     if (err == error::eof) {//err == error::eof) //right
         cerr << "EOF SERVER!!!\n";
         clients_[client_sock].server_available = false;
+        /*try {
+            boost::asio::write(*server_sock, buffer("ping"));
+        } catch (...) {
+            clients_[client_sock].server_closed = true;
+        }*/
         sendServerMessage_(client_sock, server_sock);
     } else {
+		sendServerMessage_(client_sock, server_sock);
         recvServerMessage_(client_sock, server_sock);
     }
 }
@@ -207,8 +230,9 @@ void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr s
         return;
     }
     cerr << "SENT TO SERVER\n";
-    clients_[client_sock].send_buf.clear();
-    if ((!clients_[client_sock].server_available && !clients_[client_sock].client_available && clients_[client_sock].send_buf.empty() && clients_[client_sock].recv_buf.empty()) || !client_sock->available() || !server_sock->available()) {
+    clients_[client_sock].send_buf = vector<char>();
+    if (!clients_[client_sock].server_available || !clients_[client_sock].client_available) {
+        cerr << "INTERRUPT IN SEND TO SERVER: " << clients_[client_sock].server_available << ' ' << clients_[client_sock].client_available << '\n';
         terminateClientServerConnection_(client_sock, server_sock);
     }
 }
@@ -221,8 +245,9 @@ void ProxyServer::sendServerMessageHandler_(socket_ptr client_sock, socket_ptr s
         return;
     }
     cerr << "SENT TO CLIENT\n";
-    clients_[client_sock].recv_buf.clear(); 
-    if ((!clients_[client_sock].server_available && !clients_[client_sock].client_available && clients_[client_sock].send_buf.empty() && clients_[client_sock].recv_buf.empty())  || !client_sock->available() || !server_sock->available()) {
+    clients_[client_sock].recv_buf = vector<char>();
+    if (!clients_[client_sock].server_available && !clients_[client_sock].client_available) {
+        cerr << "INTERRUPT IN SEND TO CLIENT: " << clients_[client_sock].server_available << ' ' << clients_[client_sock].client_available << '\n';
        terminateClientServerConnection_(client_sock, server_sock);
     }
 }
@@ -245,4 +270,5 @@ int main(int argc, char **argv) {
     ConfigProxy config(argv[1]);
     ProxyServer srv(config);
     srv.run();
+    return 0;
 }
