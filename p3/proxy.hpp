@@ -61,15 +61,15 @@ private:
     void connectToServer_(ServerAddress &srv_addr, socket_ptr);
     void recvClientMessage_(socket_ptr, socket_ptr);
     void recvServerMessage_(socket_ptr, socket_ptr);
-    void sendClientMessage_(socket_ptr, socket_ptr);
-    void sendServerMessage_(socket_ptr, socket_ptr);
+    void sendClientMessage_(socket_ptr, socket_ptr, bool last=false);
+    void sendServerMessage_(socket_ptr, socket_ptr, bool last=false);
 
     void acceptClientHandler_(socket_ptr, const boost::system::error_code&); 
     void connectToServerHandler_(socket_ptr, socket_ptr, const boost::system::error_code&);
     void recvClientMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&, size_t);
     void recvServerMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&, size_t);
-    void sendClientMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&);
-    void sendServerMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&);
+    void sendClientMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&, bool);
+    void sendServerMessageHandler_(socket_ptr, socket_ptr, const boost::system::error_code&, bool);
     
     ServerAddress chooseServer_();
     void terminateClientServerConnection_(socket_ptr, socket_ptr);

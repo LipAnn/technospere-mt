@@ -122,14 +122,14 @@ void ProxyServer::recvServerMessage_(socket_ptr client_sock, socket_ptr server_s
     server_sock->async_read_some(buffer(clients_[client_sock].temp_recv_buf, clients_[client_sock].temp_size), boost::bind(&ProxyServer::recvServerMessageHandler_, this, client_sock, server_sock, _1, _2)); 
 }
 
-void ProxyServer::sendClientMessage_(socket_ptr client_sock, socket_ptr server_sock) {
+void ProxyServer::sendClientMessage_(socket_ptr client_sock, socket_ptr server_sock, bool last) {
     cerr << "WANT TO SEND " << std::string(clients_[client_sock].send_buf.begin(), 
     clients_[client_sock].send_buf.end()) << std::endl;
-    async_write(*server_sock, buffer(clients_[client_sock].send_buf, clients_[client_sock].send_buf.size()), boost::bind(&ProxyServer::sendClientMessageHandler_, this, client_sock, server_sock, _1));
+    async_write(*server_sock, buffer(clients_[client_sock].send_buf, clients_[client_sock].send_buf.size()), boost::bind(&ProxyServer::sendClientMessageHandler_, this, client_sock, server_sock, _1, last));
 }
 
-void ProxyServer::sendServerMessage_(socket_ptr client_sock, socket_ptr server_sock) {
-    async_write(*client_sock, buffer(clients_[client_sock].recv_buf, clients_[client_sock].recv_buf.size()), boost::bind(&ProxyServer::sendServerMessageHandler_, this, client_sock, server_sock, _1));
+void ProxyServer::sendServerMessage_(socket_ptr client_sock, socket_ptr server_sock, bool last) {
+    async_write(*client_sock, buffer(clients_[client_sock].recv_buf, clients_[client_sock].recv_buf.size()), boost::bind(&ProxyServer::sendServerMessageHandler_, this, client_sock, server_sock, _1, last));
 }
 
 
@@ -195,7 +195,7 @@ void ProxyServer::recvClientMessageHandler_(socket_ptr client_sock, socket_ptr s
         } catch (...) {
             clients_[client_sock].server_available = false;
         }*/
-        sendClientMessage_(client_sock, server_sock);
+        sendClientMessage_(client_sock, server_sock, true);
     } else {
 		sendClientMessage_(client_sock, server_sock);
         recvClientMessage_(client_sock, server_sock);
@@ -215,7 +215,7 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
     cerr << "RECV BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_recv_buf.begin(), clients_[client_sock].temp_recv_buf.begin() + send_size) << std::endl;
     if (err == error::eof) {//err == error::eof) //right
         cerr << "EOF SERVER!!!\n";
-        if (clients_[client_sock].recv_buf.size() == -1) {
+        if (clients_[client_sock].recv_buf.size() == 0) {
             terminateClientServerConnection_(client_sock, server_sock);
             return;
         }
@@ -226,7 +226,7 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
         } catch (...) {
             clients_[client_sock].client_available = false;
         }*/
-        sendServerMessage_(client_sock, server_sock);
+        sendServerMessage_(client_sock, server_sock, true);
     } else {
 		sendServerMessage_(client_sock, server_sock);
         recvServerMessage_(client_sock, server_sock);
@@ -234,8 +234,8 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
 }
 
 
-void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err) {
-    if (err) {
+void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, bool last) {
+    if (err || last) {
         cerr << "ERROR IN SEND CLIENT MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
         terminateClientServerConnection_(client_sock, server_sock);
         return;
@@ -249,8 +249,8 @@ void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr s
 }
 
 
-void ProxyServer::sendServerMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err) {
-    if (err) {
+void ProxyServer::sendServerMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, bool last) {
+    if (err || last) {
         cerr << "ERROR IN SEND SERVER MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
         terminateClientServerConnection_(client_sock, server_sock);
         return;
