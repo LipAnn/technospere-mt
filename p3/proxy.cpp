@@ -182,7 +182,7 @@ void ProxyServer::recvClientMessageHandler_(socket_ptr client_sock, socket_ptr s
     cerr << "SEND BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_send_buf.begin(), clients_[client_sock].temp_send_buf.begin() + recv_size) << std::endl;
     if (err == error::eof) { //kostil
         cerr << "EOF CLIENT!!!\n";
-        if (clients_[client_sock].recv_buf.size() == 0) {
+        if (clients_[client_sock].send_buf.size() == 0) {
             terminateClientServerConnection_(client_sock, server_sock);
             return;
         }
@@ -215,7 +215,7 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
     cerr << "RECV BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_recv_buf.begin(), clients_[client_sock].temp_recv_buf.begin() + send_size) << std::endl;
     if (err == error::eof) {//err == error::eof) //right
         cerr << "EOF SERVER!!!\n";
-        if (clients_[client_sock].send_buf.size() == 0) {
+        if (clients_[client_sock].recv_buf.size() == -1) {
             terminateClientServerConnection_(client_sock, server_sock);
             return;
         }
