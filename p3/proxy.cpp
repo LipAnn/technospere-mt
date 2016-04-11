@@ -48,22 +48,22 @@ ifstream& operator>>(ifstream &stream, ServerAddress &addr) {
     split(split_vec, addr.ip, is_any_of(":"));
     addr.ip = split_vec[0];
     addr.port = boost::lexical_cast<int>(split_vec[1]);
-    cerr << addr.ip << ' ' << addr.port << endl;
+    //cerr << addr.ip << ' ' << addr.port << endl;
     return stream;
 }
 
 ConfigProxy::ConfigProxy(const char *s) {
     ifstream fin(s);
-    cerr << "READ CONFIG FILE " << endl;
+    //cerr << "READ CONFIG FILE " << endl;
     char trash;
     fin >> port >> trash;
-    cerr << port << endl;
+    //cerr << port << endl;
     ServerAddress cur_server_addr;
     while (fin >> cur_server_addr) {
         server_addrs.push_back(cur_server_addr);
-        cerr << "READ\n";
+        //cerr << "READ\n";
     }
-    cerr << "WE ARE READY\n";
+    //cerr << "WE ARE READY\n";
     fin.close();
 }
 
@@ -93,7 +93,7 @@ ProxyServer::ProxyServer(const ConfigProxy &config) : acceptor_(service_, ip::tc
 }
 
 void ProxyServer::run() {
-    cerr << "RUN SRV\n";
+    //cerr << "RUN SRV\n";
     socket_ptr listen_sock(new ip::tcp::socket(service_));
     //listen_sock->set_option(ip::tcp::socket::reuse_address(true));
 
@@ -114,7 +114,7 @@ void ProxyServer::connectToServer_(ServerAddress &srv_addr, socket_ptr client_so
 
 
 void ProxyServer::recvClientMessage_(socket_ptr client_sock, socket_ptr server_sock) {
-    cerr << "START_RECV_CLIENT\n";
+    //cerr << "START_RECV_CLIENT\n";
     client_sock->async_read_some(buffer(clients_[client_sock].temp_send_buf, clients_[client_sock].temp_size), boost::bind(&ProxyServer::recvClientMessageHandler_, this, client_sock, server_sock, _1, _2)); 
 }
 
@@ -123,8 +123,8 @@ void ProxyServer::recvServerMessage_(socket_ptr client_sock, socket_ptr server_s
 }
 
 void ProxyServer::sendClientMessage_(socket_ptr client_sock, socket_ptr server_sock, bool last) {
-    cerr << "WANT TO SEND " << std::string(clients_[client_sock].send_buf.begin(), 
-    clients_[client_sock].send_buf.end()) << std::endl;
+    //cerr << "WANT TO SEND " << std::string(clients_[client_sock].send_buf.begin(), 
+    //clients_[client_sock].send_buf.end()) << std::endl;
     async_write(*server_sock, buffer(clients_[client_sock].send_buf, clients_[client_sock].send_buf.size()), boost::bind(&ProxyServer::sendClientMessageHandler_, this, client_sock, server_sock, _1, last));
 }
 
@@ -136,18 +136,18 @@ void ProxyServer::sendServerMessage_(socket_ptr client_sock, socket_ptr server_s
 
 void ProxyServer::acceptClientHandler_(socket_ptr client_sock, const boost::system::error_code &err) {
     if (err) {
-        cerr << "ERROR IN ACCEPT: " << err << std::endl; // kostil
+        //cerr << "ERROR IN ACCEPT: " << err << std::endl;
         clients_.erase(client_sock);
         client_sock->close();
         return;
     }
-    cerr << "ACCEPTED NEW CLIENT\n";
-    cerr << "ADD CLIENT TO CLIENTS\n";
+    //cerr << "ACCEPTED NEW CLIENT\n";
+    //cerr << "ADD CLIENT TO CLIENTS\n";
     clients_.insert(make_pair(client_sock, ClientBuffer()));
     
-    cerr << "CHOOSE SERVER\n";
+    //cerr << "CHOOSE SERVER\n";
     ServerAddress srv_addr = chooseServer_();
-    cerr << "SERVER " << srv_addr.ip << ' ' << srv_addr.port << '\n';
+    //cerr << "SERVER " << srv_addr.ip << ' ' << srv_addr.port << '\n';
     connectToServer_(srv_addr, client_sock); //write
    
 
@@ -159,9 +159,9 @@ void ProxyServer::acceptClientHandler_(socket_ptr client_sock, const boost::syst
 
 
 void ProxyServer::connectToServerHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err) {
-    cerr << "CONNECTED TO SERVER\n";
+    //cerr << "CONNECTED TO SERVER\n";
     if (err) {
-        cerr << "ERROR IN CONNECT SERVER: CLOSE CONNECTIONS " << err << std::endl; // kostil
+        //cerr << "ERROR IN CONNECT SERVER: CLOSE CONNECTIONS " << err << std::endl;
         terminateClientServerConnection_(client_sock, server_sock);
         return;
     }
@@ -172,16 +172,16 @@ void ProxyServer::connectToServerHandler_(socket_ptr client_sock, socket_ptr ser
 
 void ProxyServer::recvClientMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, size_t recv_size) {
     if (err && err != error::eof) {
-        cerr << "ERROR IN RECV CLIENT MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
+        //cerr << "ERROR IN RECV CLIENT MESSAGE: CLOSE CONNECTIONS " << err << std::endl; 
         terminateClientServerConnection_(client_sock, server_sock);
         return;
     }
-    cerr << "RECIEVED FROM CLIENT " << err.message() << "\n";
+    //cerr << "RECIEVED FROM CLIENT " << err.message() << "\n";
     clients_[client_sock].recv_size = recv_size;
     clients_[client_sock].flushTempSendBuf();
-    cerr << "SEND BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_send_buf.begin(), clients_[client_sock].temp_send_buf.begin() + recv_size) << std::endl;
-    if (err == error::eof) { //kostil
-        cerr << "EOF CLIENT!!!\n";
+    //cerr << "SEND BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_send_buf.begin(), clients_[client_sock].temp_send_buf.begin() + recv_size) << std::endl;
+    if (err == error::eof) { 
+        //cerr << "EOF CLIENT!!!\n";
         if (clients_[client_sock].send_buf.size() == 0) {
             terminateClientServerConnection_(client_sock, server_sock);
             return;
@@ -205,16 +205,16 @@ void ProxyServer::recvClientMessageHandler_(socket_ptr client_sock, socket_ptr s
 
 void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, size_t send_size) {
     if (err && err != error::eof) {
-        cerr << "ERROR IN RECV SERVER MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
+        //cerr << "ERROR IN RECV SERVER MESSAGE: CLOSE CONNECTIONS " << err << std::endl;  
         terminateClientServerConnection_(client_sock, server_sock);
         return;
     }
-    cerr << "RECEIVED FROM SERVER\n";
+    //cerr << "RECEIVED FROM SERVER\n";
     clients_[client_sock].send_size = send_size;
     clients_[client_sock].flushTempRecvBuf();
-    cerr << "RECV BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_recv_buf.begin(), clients_[client_sock].temp_recv_buf.begin() + send_size) << std::endl;
+    //cerr << "RECV BUF: " << client_sock << ' ' << string(clients_[client_sock].temp_recv_buf.begin(), clients_[client_sock].temp_recv_buf.begin() + send_size) << std::endl;
     if (err == error::eof) {//err == error::eof) //right
-        cerr << "EOF SERVER!!!\n";
+        //cerr << "EOF SERVER!!!\n";
         if (clients_[client_sock].recv_buf.size() == 0) {
             terminateClientServerConnection_(client_sock, server_sock);
             return;
@@ -236,11 +236,11 @@ void ProxyServer::recvServerMessageHandler_(socket_ptr client_sock, socket_ptr s
 
 void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, bool last) {
     if (err || last) {
-        cerr << "ERROR IN SEND CLIENT MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
+        //cerr << "ERROR IN SEND CLIENT MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
         terminateClientServerConnection_(client_sock, server_sock);
         return;
     }
-    cerr << "SENT TO SERVER\n";
+    //cerr << "SENT TO SERVER\n";
     clients_[client_sock].send_buf = vector<char>();
     /*if (!clients_[client_sock].server_available || !clients_[client_sock].client_available) {
         cerr << "INTERRUPT IN SEND TO SERVER: " << clients_[client_sock].server_available << ' ' << clients_[client_sock].client_available << '\n';
@@ -251,11 +251,11 @@ void ProxyServer::sendClientMessageHandler_(socket_ptr client_sock, socket_ptr s
 
 void ProxyServer::sendServerMessageHandler_(socket_ptr client_sock, socket_ptr server_sock, const boost::system::error_code &err, bool last) {
     if (err || last) {
-        cerr << "ERROR IN SEND SERVER MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
+        //cerr << "ERROR IN SEND SERVER MESSAGE: CLOSE CONNECTIONS " << err << std::endl; // kostil
         terminateClientServerConnection_(client_sock, server_sock);
         return;
     }
-    cerr << "SENT TO CLIENT\n";
+    //cerr << "SENT TO CLIENT\n";
     clients_[client_sock].recv_buf = vector<char>();
     /*if (!clients_[client_sock].server_available && !clients_[client_sock].client_available) {
         cerr << "INTERRUPT IN SEND TO CLIENT: " << clients_[client_sock].server_available << ' ' << clients_[client_sock].client_available << '\n';
