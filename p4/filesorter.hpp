@@ -20,7 +20,7 @@ private:
     string unsortedfile_;
     string partly_sorted_file_;  
     string sortedfile_;
-    static const size_t available_memory_ = 1024 * 1024 * 1024;//1024 * 1024 * 1.2;
+    static const uint64_t available_memory_ = 1024 * 1024 * 1024 * 1.5;//1024 * 1024 * 1.2;
     size_t filesize_;
     static const size_t max_pairs_ = available_memory_ / 128;
     vector<pair<uint64_t, uint64_t>> sort_buf_;
