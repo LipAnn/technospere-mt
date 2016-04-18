@@ -25,7 +25,7 @@ using std::flush;
 using std::copy;
 using std::max;
 
-int cur_child;
+int cur_child = 0;
 
 Call::Call(const vector<Lexem> &lexems, size_t &idx, int readfd, int writefd) {
     readfd_ = readfd;
@@ -195,6 +195,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
             prev_executed = true;
             cur_child = pid;
             waitpid(pid, &status, 0);
+            cur_child = 0;
             prev_exit_status_ = ExitStat(status);
         } else if (prev_op == "pipe" || prev_op == "and") {
             if ((prev_op == "pipe" && prev_executed) || prev_exit_status_.success()) {
@@ -206,6 +207,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
                 prev_executed = true;
                 cur_child = pid;
                 waitpid(pid, &status, 0);
+                cur_child = 0;
                 prev_exit_status_ = ExitStat(status);
                 if (prev_op == "pipe") {
                     readfd_ = prev_readfd_;
@@ -223,6 +225,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
                 prev_executed = true;
                 cur_child = pid;
                 waitpid(pid, &status, 0);
+                cur_child = 0;
                 prev_exit_status_ = ExitStat(status);
             } else {
                 prev_executed = false;
@@ -246,7 +249,9 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
 
 void handler(int signum) {
     signal(cur_child, handler);
-    kill(cur_child, signum);
+    if (cur_child != 0) {
+        kill(cur_child, signum);
+    }
 }
 
 int Shell::run() {
