@@ -25,6 +25,7 @@ using std::flush;
 using std::copy;
 using std::max;
 
+int cur_child;
 
 Call::Call(const vector<Lexem> &lexems, size_t &idx, int readfd, int writefd) {
     readfd_ = readfd;
@@ -151,13 +152,13 @@ void Shell::terminalWatchSubprocesses_() {
     }
     for (auto &pid: subprocesses_) {
         //cout << "PID: " << pid << endl;
-        cout << waitpid(pid, statuses + idx, 0) << endl;
-        perror("");
+        waitpid(pid, statuses + idx, 0);
+        //perror("");
         ++idx;
     }
     idx = 0;
     for (auto &pid: subprocesses_) {
-        cout << statuses[idx] << endl;
+        //cout << statuses[idx] << endl;
         cerr << "Process " << pid << " exited: " << WEXITSTATUS(statuses[idx]) << endl;
         ++idx;
     }
@@ -192,6 +193,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
             }
             call.closeFd();
             prev_executed = true;
+            cur_child = pid;
             waitpid(pid, &status, 0);
             prev_exit_status_ = ExitStat(status);
         } else if (prev_op == "pipe" || prev_op == "and") {
@@ -202,6 +204,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
                 }
                 call.closeFd();
                 prev_executed = true;
+                cur_child = pid;
                 waitpid(pid, &status, 0);
                 prev_exit_status_ = ExitStat(status);
                 if (prev_op == "pipe") {
@@ -218,6 +221,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
                 }
                 call.closeFd();
                 prev_executed = true;
+                cur_child = pid;
                 waitpid(pid, &status, 0);
                 prev_exit_status_ = ExitStat(status);
             } else {
@@ -232,7 +236,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
             //cout << prev_op << endl;
             ++idx;
         }
-        watchSubprocesses_();
+        //watchSubprocesses_();
         //cout << WEXITSTATUS(status) << endl;
 
     }
@@ -240,8 +244,13 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
     return WEXITSTATUS(status);
 }
 
+void handler(int signum) {
+    signal(cur_child, handler);
+    kill(cur_child, signum);
+}
 
 int Shell::run() {
+    signal(SIGINT, handler);
     string cur_commands;
     //cout << ">>> " << flush;
     vector<pid_t> pids;

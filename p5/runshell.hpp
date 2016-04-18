@@ -15,6 +15,8 @@ using std::cin;
 using std::set;
 using std::vector;
 
+void handler(int);
+
 class Call {
 private:
     int readfd_;
