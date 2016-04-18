@@ -98,7 +98,7 @@ int Call::exec() {
         c_argv[i] = argv_[i];
     }
     c_argv[argv_.size()] = nullptr;
-    return execvp(c_argv[0], c_argv);
+    //return execvp(c_argv[0], c_argv);
     if (execvp(c_argv[0], c_argv) < 0) {
         exit(EXIT_FAILURE);
     }
@@ -142,9 +142,11 @@ void Shell::watchSubprocesses_() {
 }
 
 void Shell::terminalWatchSubprocesses_() {
+    //cout << subprocesses_.size();
     if (subprocesses_.empty()) {
         return;
     }
+    //cout << "WTF!!!" << endl;
     int statuses[subprocesses_.size()];
     int idx = 0;
     for (size_t i = 0; i < subprocesses_.size(); ++i) {
@@ -248,7 +250,7 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
 }
 
 void handler(int signum) {
-    signal(cur_child, handler);
+    signal(signum, handler);
     if (cur_child != 0) {
         kill(cur_child, signum);
     }
@@ -257,17 +259,17 @@ void handler(int signum) {
 int Shell::run() {
     signal(SIGINT, handler);
     string cur_commands;
-    //cout << ">>> " << flush;
     vector<pid_t> pids;
     while (getline(cin, cur_commands)) {
+        //cout << "COMMAND: " << cur_commands << endl;
         LexemParser lp(cur_commands); 
         lp.parse();
         vector<Lexem> lexems = lp.get();
+        
         if (!lexems.empty() && lexems.back().type == "subprocess") {
             pid_t pid = fork();
             if (pid == 0) {
                 int s = calcCalls_(lexems);
-                //cout << "W: " << s  << endl;
                 exit(s);
             }
             addSubprocess_(pid);
