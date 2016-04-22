@@ -49,6 +49,10 @@ private:
     ExitStat prev_exit_status_;
     set<pid_t> subprocesses_;
 
+    void calcAnd(Call&, int&);
+    void calcOr(Call&, int&);
+    void calcCommand(Call&, int&);
+    void calcPipeline(Call&, int&, const vector<Lexem>&, size_t&, string&);
     int calcCalls_(const vector<Lexem>&);
     void addSubprocess_(pid_t);
     void watchSubprocesses_();

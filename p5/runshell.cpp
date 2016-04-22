@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <set>
 
 #include "parser.hpp"
 #include "runshell.hpp"
@@ -24,8 +25,9 @@ using std::endl;
 using std::flush;
 using std::copy;
 using std::max;
+using std::set;
 
-int cur_child = 0;
+set<int> cur_childs;
 
 Call::Call(const vector<Lexem> &lexems, size_t &idx, int readfd, int writefd) {
     readfd_ = readfd;
@@ -167,11 +169,111 @@ void Shell::terminalWatchSubprocesses_() {
     subprocesses_.clear();
 }
 
+void Shell::calcAnd(Call &call, int &status) {
+    if (prev_exit_status_.success()) {
+        int pid = fork();
+        if (pid == 0) {
+            exit(call.exec());
+        }
+        call.closeFd();
+        //prev_executed = true;
+        cur_childs.insert(pid);
+        waitpid(pid, &status, 0);
+        cur_childs.erase(pid);
+        prev_exit_status_ = ExitStat(status);
+    } //else {
+    //prev_executed = false;
+    //}
+}
+
+void Shell::calcOr(Call &call, int &status) {
+    if (!prev_exit_status_.success()) {
+        int pid = fork();
+        if (pid == 0) {
+            exit(call.exec());
+        }
+        call.closeFd();
+        //prev_executed = true;
+        cur_childs.insert(pid);
+        waitpid(pid, &status, 0);
+        cur_childs.erase(pid);
+        prev_exit_status_ = ExitStat(status);
+    } //else {
+   //prev_executed = false;
+    //}
+}
+
+void Shell::calcCommand(Call &call, int &status) {
+    int pid = fork();
+    if (pid == 0) {
+        exit(call.exec());
+    }
+    call.closeFd();
+    //prev_executed = true;
+    cur_childs.insert(pid);
+    waitpid(pid, &status, 0);
+    cur_childs.erase(pid);
+    prev_exit_status_ = ExitStat(status);
+}
+
+void Shell::calcPipeline(Call &call, int &status, const vector<Lexem> &lexems, size_t &idx, string &prev_op) {
+    vector<int> pipe_pids;
+    bool first = true;
+    while (idx < lexems.size() && lexems[idx].type == "pipe") {
+        pipe(pipefd_);
+        prev_readfd_ = pipefd_[0];
+        call.setWriteFd(pipefd_[1]);
+        
+        if (first && ((prev_op == "and" && !prev_exit_status_.success()) ||
+                        (prev_op == "or" && prev_exit_status_.success()))) {
+            call.closeFd();
+            ++idx;
+            call = Call(lexems, idx, prev_readfd_);
+            first = false;
+            continue;
+        }
+        int pid = fork();
+        if (pid == 0) {
+            exit(call.exec());
+        }
+        pipe_pids.push_back(pid);
+        cur_childs.insert(pid);
+        call.closeFd();
+        ++idx;
+        call = Call(lexems, idx, prev_readfd_);
+        first = false;
+    }
+
+    int pid = fork();
+    if (pid == 0) {
+        exit(call.exec());
+    }
+    pipe_pids.push_back(pid);
+    cur_childs.insert(pid);
+    call.closeFd();
+
+    for (size_t i = 0; i < pipe_pids.size(); ++i) {
+        if (i == pipe_pids.size() - 1) {
+            waitpid(pipe_pids[i], &status, 0);
+            cur_childs.erase(pipe_pids[i]);
+        } else {
+            waitpid(pipe_pids[i], nullptr, 0);
+            cur_childs.erase(pipe_pids[i]);
+        }
+    }
+    
+    prev_exit_status_ = ExitStat(status);
+    if (idx == lexems.size()) {
+        return;
+    }
+    prev_readfd_ = 0;
+}
+
 
 int Shell::calcCalls_(const vector<Lexem> &lexems) {
     size_t idx = 0;
     int status;
-    bool prev_executed = true;
+    //bool prev_executed = true;
     string prev_op = "";
     if (lexems.empty()) {
         return 0;
@@ -180,68 +282,22 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
     while (idx < lexems.size()) {
         readfd_ = prev_readfd_;
         Call call(lexems, idx, readfd_, writefd_);
-        if (idx < lexems.size() && lexems[idx].type == "pipe") {
-            pipe(pipefd_);
-            prev_readfd_ = pipefd_[0];
-            call.setWriteFd(pipefd_[1]);
-        } else {
-            prev_readfd_ = 0;
-        }
         
-        if (prev_op == "") {
-            int pid = fork();
-            if (pid == 0) {
-                return call.exec();
-            }
-            call.closeFd();
-            prev_executed = true;
-            cur_child = pid;
-            waitpid(pid, &status, 0);
-            cur_child = 0;
-            prev_exit_status_ = ExitStat(status);
-        } else if (prev_op == "pipe" || prev_op == "and") {
-            if ((prev_op == "pipe" && prev_executed) || prev_exit_status_.success()) {
-                int pid = fork();
-                if (pid == 0) {
-                    return call.exec();
-                }
-                call.closeFd();
-                prev_executed = true;
-                cur_child = pid;
-                waitpid(pid, &status, 0);
-                cur_child = 0;
-                prev_exit_status_ = ExitStat(status);
-                if (prev_op == "pipe") {
-                    readfd_ = prev_readfd_;
-                }
-            } else {
-                prev_executed = false;
-            }
+        if (idx < lexems.size() && lexems[idx].type == "pipe") {
+            calcPipeline(call, status, lexems, idx, prev_op);
+        } else if (prev_op == "") {
+            calcCommand(call, status);
+        } else if (prev_op == "and") {
+            calcAnd(call, status);
         } else if (prev_op == "or") {
-            if (!prev_exit_status_.success()) {
-                int pid = fork();
-                if (pid == 0) {
-                    return call.exec();
-                }
-                call.closeFd();
-                prev_executed = true;
-                cur_child = pid;
-                waitpid(pid, &status, 0);
-                cur_child = 0;
-                prev_exit_status_ = ExitStat(status);
-            } else {
-                prev_executed = false;
-            }
+            calcOr(call, status);
         }
-
-
 
         if (idx < lexems.size()) {
             prev_op = lexems[idx].type;
-            //cout << prev_op << endl;
             ++idx;
         }
-        //watchSubprocesses_();
+        watchSubprocesses_();
         //cout << WEXITSTATUS(status) << endl;
 
     }
@@ -251,8 +307,8 @@ int Shell::calcCalls_(const vector<Lexem> &lexems) {
 
 void handler(int signum) {
     signal(signum, handler);
-    if (cur_child != 0) {
-        kill(cur_child, signum);
+    for (auto &child: cur_childs) {
+        kill(child, signum);
     }
 }
 
