@@ -263,9 +263,6 @@ void Shell::calcPipeline(Call &call, int &status, const vector<Lexem> &lexems, s
     }
     
     prev_exit_status_ = ExitStat(status);
-    if (idx == lexems.size()) {
-        return;
-    }
     prev_readfd_ = 0;
 }
 
