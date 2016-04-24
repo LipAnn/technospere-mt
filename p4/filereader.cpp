@@ -41,6 +41,8 @@ string FileReader::read() {
     }
     fin.close();
     fout.close();
+    //cout << "READ INPUT FILE\n";
+    //cout.flush();
     return output_filename;
 }
 

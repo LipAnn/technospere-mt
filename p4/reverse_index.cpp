@@ -47,6 +47,7 @@ string makeReverseIndex(string index) {
         }
     }
     //cout << "WRITE WORDS AND OFFSETS\n";
+    //cout.flush();
     uint64_t temp = 0;
     reverse_index.write(reinterpret_cast<char*>(&temp), sizeof(temp));
     reverse_index.write(reinterpret_cast<char*>(&temp), sizeof(temp));
@@ -63,6 +64,7 @@ string makeReverseIndex(string index) {
         }
     }
     //cout << "WRITE DOCS\n";
+    //cout.flush();
     sorted.close();
     remove(sorted_file.c_str());
     reverse_index.close();

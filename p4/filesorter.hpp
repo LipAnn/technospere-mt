@@ -5,12 +5,24 @@
 #include <vector>
 #include <utility>
 #include <string>
+#include <set>
 
 using std::ifstream;
 using std::ofstream;
 using std::vector;
 using std::pair;
 using std::string;
+using std::set;
+
+struct IdsStruct {
+    uint64_t file_pos_idx;
+    uint64_t next_offset;
+    uint64_t word;
+    uint64_t doc;
+
+    IdsStruct(uint64_t, uint64_t, uint64_t, uint64_t); 
+    bool operator<(const IdsStruct&) const;
+};
 
 class FileSorter {
 public:
@@ -20,15 +32,17 @@ private:
     string unsortedfile_;
     string partly_sorted_file_;  
     string sortedfile_;
-    static const uint64_t available_memory_ = 1024 * 1024 * 1024 * 1.5;//1024 * 1024 * 1.2;
+    uint64_t available_memory_; // = 1024 * 1024 * 1024 * 1.0;//1024 * 1024 * 1.2;
     size_t filesize_;
-    static const size_t max_pairs_ = available_memory_ / 128;
+    bool initialize_;
+    size_t max_pairs_; // = available_memory_ / 16;
     vector<pair<uint64_t, uint64_t>> sort_buf_;
     vector<size_t> file_positions_;
     vector<size_t> next_file_positions_;
+    set<IdsStruct> heap_;
 
     size_t getFileSize(string&);
     void partlySort();
-    pair<pair<int64_t, int64_t>, pair<uint64_t, uint64_t>> getMin(ifstream&);
+    pair<uint64_t, uint64_t> getMin(ifstream&);
 
 };
